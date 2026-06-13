@@ -15,6 +15,26 @@ The main goal of this repo is simple:
 - make the expensive optional parts disabled by default
 - leave enough detail so the next person can understand what will be created
 
+## Architecture Diagrams
+
+The diagrams below are placeholders. Replace the image files under `docs/images/` with the final architecture diagrams before publishing.
+
+### 1. Overall Landing Zone
+
+![Overall Landing Zone](docs/images/architecture-01-overall.png)
+
+### 2. Network Layout
+
+![Network Layout](docs/images/architecture-02-network.png)
+
+### 3. AI and Data Services
+
+![AI and Data Services](docs/images/architecture-03-ai-data-services.png)
+
+### 4. Cost-Controlled Components
+
+![Cost-Controlled Components](docs/images/architecture-04-cost-control.png)
+
 ## What This Deploys
 
 The main working example is:
