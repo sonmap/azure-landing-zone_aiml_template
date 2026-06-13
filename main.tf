@@ -15,6 +15,6 @@ data "azurerm_client_config" "current" {}
 
 module "avm_utl_regions" {
   source  = "Azure/avm-utl-regions/azurerm"
-  version = "0.9.2"
+  version = "0.12.0"
 }
 
