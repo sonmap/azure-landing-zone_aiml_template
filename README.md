@@ -34,27 +34,29 @@ This Terraform version follows the same intent:
 - observability through Log Analytics
 - optional ingress, firewall, bastion, and VM support
 
-The conversion was done at the architecture and module level. In other words, the goal was to reproduce the landing zone behavior in Terraform, not to translate every Bicep expression into Terraform syntax.
+The conversion was done at the architecture and module level. The goal was to reproduce the landing zone behavior in Terraform, not to translate every Bicep expression into Terraform syntax.
 
 ## Architecture Diagrams
 
-The diagrams below are placeholders. Replace the image files under `docs/images/` with the final diagrams.
-
 ### 1. Overall Landing Zone
 
-![Overall Landing Zone](docs/images/architecture-01-overall.png)
+<img width="6018" height="5672" alt="Overall Landing Zone" src="https://github.com/user-attachments/assets/74698449-f6d8-477d-8388-851b69f7f1f4" />
 
-### 2. Network Layout
+### 2. AI Overall Landing Zone
 
-![Network Layout](docs/images/architecture-02-network.png)
+<img width="1938" height="1377" alt="AI Overall Landing Zone" src="https://github.com/user-attachments/assets/7ff91c80-6309-4651-ab69-163466d0a03d" />
 
-### 3. AI and Data Services
+### 3. Private DNS Zone Simple Flow
 
-![AI and Data Services](docs/images/architecture-03-ai-data-services.png)
+<img width="2122" height="1182" alt="Private DNS Zone Simple Flow" src="https://github.com/user-attachments/assets/4986bd34-6093-4f8f-9dc0-66936145a08d" />
 
-### 4. Cost-Controlled Components
+### 4. AI and Data Services Detail
 
-![Cost-Controlled Components](docs/images/architecture-04-cost-control.png)
+<img width="2057" height="1370" alt="AI and Data Services Detail 1" src="https://github.com/user-attachments/assets/1e89160b-a39b-487a-a9df-501994795626" />
+
+<img width="915" height="1371" alt="AI and Data Services Detail 2" src="https://github.com/user-attachments/assets/9e6bc5cb-5007-496a-8a86-cc8241e07084" />
+
+<img width="2048" height="1367" alt="AI and Data Services Detail 3" src="https://github.com/user-attachments/assets/167527e5-436c-4bd4-8e1b-a37ed8e7685d" />
 
 ## Recommended Starting Point
 
@@ -241,33 +243,33 @@ For normal use, start from `examples/standalone`. Do not run the root module dir
 
 | File or folder | What it does |
 | --- | --- |
-| `terraform.tf` | Defines required Terraform and provider versions. |
-| `data.tf` | Reads common Azure data used by the module. |
-| `locals.tf` | Defines shared local values used across the deployment. |
-| `locals.networking.tf` | Builds names and settings for VNet, subnets, route tables, NSGs, private DNS, and private endpoints. |
-| `locals.foundry.tf` | Builds values used by Azure AI Foundry and its project configuration. |
-| `main.tf` | Creates the base resource group and wires the main module flow. |
-| `main.networking.tf` | Creates VNet, subnets, NSG, route table, private DNS zones, private DNS links, and optional network services. |
-| `main.foundry.tf` | Deploys AI Foundry-related resources and connections. |
-| `main.genai_services.tf` | Deploys supporting services such as AI Search, Cosmos DB, Storage, Key Vault, ACR, App Configuration, and Container Apps Environment. |
-| `main.compute.tf` | Contains optional Jump VM and Build VM resources. They are disabled in the standalone example. |
-| `main.apim.tf` | Contains optional API Management resources. It is disabled in the standalone example. |
-| `main.diagnostics.tf` | Connects supported services to Log Analytics diagnostic settings. |
-| `variables*.tf` | Defines input objects for networking, AI Foundry, GenAI services, compute, APIM, and common settings. |
-| `outputs.tf` | Exposes useful deployment outputs where available. |
-| `modules/` | Local helper modules used by the pattern and examples. |
-| `docs/images/` | Placeholders for architecture diagrams used in this README. |
+| `terraform.tf` | Defines required Terraform and provider versions |
+| `data.tf` | Reads common Azure data used by the module |
+| `locals.tf` | Defines shared local values used across the deployment |
+| `locals.networking.tf` | Builds names and settings for VNet, subnets, route tables, NSGs, private DNS, and private endpoints |
+| `locals.foundry.tf` | Builds values used by Azure AI Foundry and project configuration |
+| `main.tf` | Creates the base resource group and wires the main module flow |
+| `main.networking.tf` | Creates VNet, subnets, NSG, route table, private DNS zones, private DNS links, and optional network services |
+| `main.foundry.tf` | Deploys AI Foundry-related resources and connections |
+| `main.genai_services.tf` | Deploys supporting services such as AI Search, Cosmos DB, Storage, Key Vault, ACR, App Configuration, and Container Apps Environment |
+| `main.compute.tf` | Contains optional Jump VM and Build VM resources. They are disabled in the standalone example |
+| `main.apim.tf` | Contains optional API Management resources. It is disabled in the standalone example |
+| `main.diagnostics.tf` | Connects supported services to Log Analytics diagnostic settings |
+| `variables*.tf` | Defines input objects for networking, AI Foundry, GenAI services, compute, APIM, and common settings |
+| `outputs.tf` | Exposes useful deployment outputs where available |
+| `modules/` | Local helper modules used by the pattern and examples |
+| `docs/images/` | Optional local image location for architecture diagrams |
 
 ### Standalone Example Files
 
 | File | What it does |
 | --- | --- |
-| `examples/standalone/main.tf` | Main working example. It calls the root module and sets the cost-controlled defaults. |
-| `examples/standalone/variables.tf` | Example-level variables. This is intentionally small. |
-| `examples/standalone/terraform.tfvars` | Example values. Currently used to set telemetry behavior. |
-| `examples/standalone/plan.sh` | Runs init, validate, and plan in a repeatable way. |
-| `examples/standalone/apply.sh` | Applies the saved `tfplan`. |
-| `examples/standalone/APPLY.md` | Short notes for applying the standalone example. |
+| `examples/standalone/main.tf` | Main working example. It calls the root module and sets the cost-controlled defaults |
+| `examples/standalone/variables.tf` | Example-level variables. This is intentionally small |
+| `examples/standalone/terraform.tfvars` | Example values. Currently used to set telemetry behavior |
+| `examples/standalone/plan.sh` | Runs init, validate, and plan in a repeatable way |
+| `examples/standalone/apply.sh` | Applies the saved `tfplan` |
+| `examples/standalone/APPLY.md` | Short notes for applying the standalone example |
 
 The most important file for a first review is:
 
@@ -353,10 +355,10 @@ Command meaning:
 
 | Command | Purpose |
 | --- | --- |
-| `terraform init` | Downloads providers and modules. Run this first. |
-| `terraform validate` | Checks whether the Terraform files are syntactically valid. |
-| `terraform plan -out tfplan` | Builds a deployment plan and saves it. Review this before applying. |
-| `terraform apply tfplan` | Applies exactly the saved plan. |
+| `terraform init` | Downloads providers and modules. Run this first |
+| `terraform validate` | Checks whether the Terraform files are syntactically valid |
+| `terraform plan -out tfplan` | Builds a deployment plan and saves it. Review this before applying |
+| `terraform apply tfplan` | Applies exactly the saved plan |
 
 Helper scripts are included:
 
@@ -383,12 +385,12 @@ Do not run `terraform apply` from the repository root for a normal test. Run it 
 
 Check these before running `terraform apply`:
 
-- Confirm the Azure subscription is correct.
-- Confirm the region in `examples/standalone/main.tf`.
-- Confirm the expensive components are still set to `deploy = false`.
-- Review the list of resources in `terraform plan`.
-- Check whether Azure AI Search, Cosmos DB, Container Registry, and Private Endpoints are really needed.
-- Decide whether this is a short test or a longer-running environment.
+- Confirm the Azure subscription is correct
+- Confirm the region in `examples/standalone/main.tf`
+- Confirm the expensive components are still set to `deploy = false`
+- Review the list of resources in `terraform plan`
+- Check whether Azure AI Search, Cosmos DB, Container Registry, and Private Endpoints are really needed
+- Decide whether this is a short test or a longer-running environment
 
 Useful command:
 
@@ -486,10 +488,10 @@ When enabling one of these components, do not only change `deploy = true`. Revie
 
 Examples:
 
-- Azure Firewall also needs route table review.
-- Application Gateway also needs listener, backend pool, certificate, public IP, and WAF policy review.
-- API Management also needs SKU, publisher settings, network mode, and public/private access review.
-- Jump VM and Build VM also need image, identity, patching, access, and shutdown policy review.
+- Azure Firewall also needs route table review
+- Application Gateway also needs listener, backend pool, certificate, public IP, and WAF policy review
+- API Management also needs SKU, publisher settings, network mode, and public/private access review
+- Jump VM and Build VM also need image, identity, patching, access, and shutdown policy review
 
 ## Notes
 
