@@ -1,23 +1,44 @@
 # Azure AI/ML Landing Zone Terraform Template
 
-This repository is a Terraform version of the Azure AI/ML Landing Zone pattern.
+This repository contains a Terraform-based version of the Azure AI/ML Landing Zone pattern.
 
-The original reference is Microsoft Azure's Bicep implementation:
+The original reference is Microsoft's Bicep implementation:
 
 https://github.com/Azure/bicep-ptn-aiml-landing-zone
 
-I used that Bicep landing zone as the design reference and prepared a Terraform-based implementation for testing and reuse. This is not a one-to-one mechanical conversion of every Bicep line. The original project is built around Azure Verified Modules, so the practical Terraform version also follows the AVM-style Terraform pattern and keeps the same main landing zone idea.
+I used the Bicep project as the design reference and rebuilt the deployment flow in Terraform. This is not a line-by-line conversion of every Bicep file. The original project is based on Azure Verified Modules and a modular landing zone layout, so this repository keeps the same general structure and implements it with Terraform modules and examples.
 
-The main goal of this repo is simple:
+The purpose of this repository is practical:
 
-- deploy an AI/ML landing zone with Terraform
-- keep the structure close to the Azure reference pattern
-- make the expensive optional parts disabled by default
-- leave enough detail so the next person can understand what will be created
+- keep the Azure AI/ML Landing Zone pattern available in Terraform
+- provide a standalone example that can be tested without an existing hub landing zone
+- disable several expensive optional services by default
+- document what will be deployed before someone runs `terraform apply`
+- make it easier to review cost and cleanup after testing
+
+## Source and Conversion Notes
+
+The source pattern is:
+
+```text
+Azure/bicep-ptn-aiml-landing-zone
+```
+
+This Terraform version follows the same intent:
+
+- AI/ML workload landing zone
+- private network layout
+- private endpoints
+- private DNS zones
+- AI Foundry and dependent data services
+- observability through Log Analytics
+- optional ingress, firewall, bastion, and VM support
+
+The conversion was done at the architecture and module level. In other words, the goal was to reproduce the landing zone behavior in Terraform, not to translate every Bicep expression into Terraform syntax.
 
 ## Architecture Diagrams
 
-The diagrams below are placeholders. Replace the image files under `docs/images/` with the final architecture diagrams before publishing.
+The diagrams below are placeholders. Replace the image files under `docs/images/` with the final diagrams.
 
 ### 1. Overall Landing Zone
 
@@ -35,45 +56,76 @@ The diagrams below are placeholders. Replace the image files under `docs/images/
 
 ![Cost-Controlled Components](docs/images/architecture-04-cost-control.png)
 
-## What This Deploys
+## Recommended Starting Point
 
-The main working example is:
+Use the standalone example first:
 
 ```bash
 examples/standalone
 ```
 
-This example creates a standalone AI/ML landing zone. It does not depend on an existing hub network or enterprise landing zone.
+This example creates its own resource group, virtual network, subnets, private DNS zones, private endpoints, AI services, and supporting resources.
 
-The configuration includes:
+It does not require an existing Azure Landing Zone hub, Azure Firewall, ExpressRoute, or Bastion host.
 
-- Resource group
-- Virtual network
-- Subnets for AI Foundry, private endpoints, container apps, APIM, application gateway, bastion, firewall, jump box, and build workloads
-- Network security group
-- Route table
-- Private DNS zones
-- Private DNS zone links
-- Private endpoints
-- Log Analytics workspace
-- Azure AI Foundry / AI Services
-- Azure AI Foundry project wiring
-- Azure AI Search
-- Cosmos DB
-- Storage accounts
-- Key Vaults
-- Container Registry
-- Container Apps managed environment
-- App Configuration
-- Bing grounding account
+## High-Level Deployment Shape
 
-Some subnet names remain even when the related service is disabled. For example, `AzureFirewallSubnet` and `AzureBastionSubnet` can still exist as subnet definitions, but the actual Azure Firewall and Azure Bastion services are not deployed.
+```text
+Resource Group
+  |
+  +-- Virtual Network
+  |     +-- AI Foundry subnet
+  |     +-- Private endpoint subnet
+  |     +-- Container Apps environment subnet
+  |     +-- APIM subnet
+  |     +-- Application Gateway subnet
+  |     +-- Azure Bastion subnet
+  |     +-- Azure Firewall subnet
+  |     +-- Jumpbox subnet
+  |     +-- DevOps build subnet
+  |
+  +-- Network Security Group
+  +-- Route Table
+  +-- Private DNS Zones
+  +-- Private DNS Zone Links
+  +-- Private Endpoints
+  |
+  +-- Azure AI Foundry / AI Services
+  +-- Azure AI Search
+  +-- Cosmos DB
+  +-- Storage Accounts
+  +-- Key Vaults
+  +-- Container Registry
+  +-- Container Apps Environment
+  +-- App Configuration
+  +-- Log Analytics Workspace
+```
 
-## Expensive Components Disabled
+Some subnets are still created even when the service that normally uses them is disabled. For example, `AzureFirewallSubnet` may exist as a subnet, but the Azure Firewall resource itself is not deployed when `firewall_definition.deploy = false`.
 
-Some Azure services are useful in a production landing zone, but they can create noticeable cost very quickly during a test.
+## Main Components
 
-For that reason, the following components are explicitly set to `false` in the standalone example:
+| Area | Terraform configuration | What it is for |
+| --- | --- | --- |
+| Resource group | `resource_group_name` | Main container for the deployment |
+| Network | `vnet_definition` | VNet, address space, and workload subnets |
+| Routing | `use_internet_routing` | Uses direct internet routing when Azure Firewall is disabled |
+| NSG | `nsgs_definition` | Basic subnet traffic control |
+| Private DNS | `private_dns_zones` | Name resolution for private endpoints |
+| AI Foundry | `ai_foundry_definition` | AI Foundry account, project, model deployment, and connections |
+| AI Search | `ai_search_definition`, `ks_ai_search_definition` | Search service used by AI workloads |
+| Cosmos DB | `cosmosdb_definition`, `genai_cosmosdb_definition` | Data storage for AI and application services |
+| Storage | `storage_account_definition`, `genai_storage_account_definition` | Blob/data storage |
+| Key Vault | `key_vault_definition`, `genai_key_vault_definition` | Secrets and service integration |
+| Container Registry | `genai_container_registry_definition` | Container image registry |
+| Container Apps | `container_app_environment_definition` | Managed environment for app workloads |
+| Observability | Log Analytics settings | Central logging and diagnostic target |
+
+## Expensive Components Disabled by Default
+
+Some services are useful in a production landing zone, but they are not always needed for a test deployment. They can also create cost quickly.
+
+For this reason, the standalone example explicitly disables these components:
 
 ```hcl
 apim_definition = {
@@ -101,73 +153,74 @@ jumpvm_definition = {
 }
 ```
 
-Also, because Azure Firewall is disabled, this setting is enabled:
+Disabled by default:
+
+| Component | Why it is disabled |
+| --- | --- |
+| Azure Firewall | High baseline cost, not required for a simple test |
+| Azure Bastion | Useful for private VM access, but not needed when no VM is deployed |
+| Application Gateway / WAF | Only needed when public ingress is required |
+| API Management | Useful for API gateway scenarios, but expensive for a basic test |
+| Jump VM | Not required for this template's normal Terraform run |
+| Build VM | Not required unless a build agent VM is part of the design |
+
+Because Azure Firewall is disabled, this setting is also used:
 
 ```hcl
 use_internet_routing = true
 ```
 
-Without this, the route table can try to point default traffic to a firewall private IP that does not exist.
+This avoids a route table pointing to a firewall private IP that does not exist.
 
-Disabled by default:
+## What Still Costs Money
 
-- Azure Firewall
-- Azure Bastion
-- Application Gateway / WAF
-- API Management
-- Jump VM
-- Build VM
+This template is cost-controlled, not free.
 
-These are the main items I did not want to create by accident during a test run.
+The following resources can still create cost:
 
-## Important Cost Note
+| Service | Cost note |
+| --- | --- |
+| Azure AI Foundry / AI Services | Depends on model deployments and usage |
+| Azure AI Search | Standard SKU can create steady cost |
+| Cosmos DB | Cost depends on throughput/serverless configuration and storage |
+| Storage Account | Usually small, but depends on data and transactions |
+| Key Vault | Usually small, but still billable |
+| Container Registry | SKU matters; Premium is not cheap |
+| Container Apps Environment | Can create cost depending on workload profile and usage |
+| Private Endpoints | Each private endpoint has hourly/network cost |
+| Log Analytics | Ingestion and retention can create cost |
+| App Configuration | Standard tier is billable |
+| Bing Grounding | Billable service depending on use |
 
-This is not a zero-cost deployment.
-
-Even with the expensive optional components disabled, the following services can still create cost:
-
-- Azure AI Foundry / AI Services
-- Azure AI Search
-- Cosmos DB
-- Storage Account
-- Key Vault
-- Container Registry
-- Container Apps Environment
-- Private Endpoints
-- Log Analytics
-- App Configuration
-- Bing Grounding
-
-Before running `terraform apply`, check the plan carefully.
-
-```bash
-terraform plan
-```
-
-If this is only for a quick test, destroy it as soon as the test is finished.
-
-```bash
-terraform destroy
-```
+Before applying, review the Terraform plan and check whether the services are needed.
 
 ## Repository Layout
 
-Main files and folders:
-
 ```text
 .
+├── README.md
+├── terraform.tf
+├── data.tf
+├── locals.tf
+├── locals.networking.tf
+├── locals.foundry.tf
 ├── main.tf
 ├── main.networking.tf
 ├── main.foundry.tf
 ├── main.genai_services.tf
 ├── main.compute.tf
 ├── main.apim.tf
+├── main.diagnostics.tf
 ├── variables.tf
 ├── variables.networking.tf
 ├── variables.foundry.tf
 ├── variables.genai_services.tf
+├── variables.compute.tf
+├── variables.apim.tf
 ├── outputs.tf
 ├── modules/
+├── docs/
+│   └── images/
 └── examples/
     └── standalone/
         ├── main.tf
@@ -178,26 +231,24 @@ Main files and folders:
         └── APPLY.md
 ```
 
-The recommended starting point is:
+## Standalone Example Details
 
-```bash
-examples/standalone
-```
-
-## Standalone Example
-
-The standalone example is prepared for direct testing.
-
-It sets:
+The standalone example uses:
 
 ```hcl
 flag_platform_landing_zone = false
 use_internet_routing       = true
 ```
 
-This means the deployment is self-contained. It creates its own VNet and supporting network resources.
+This means:
 
-The location is currently:
+- the VNet is created by this deployment
+- private DNS zones are created by this deployment
+- no existing hub network is required
+- default routing goes directly to the internet instead of Azure Firewall
+- Azure Firewall is not created
+
+The current region is:
 
 ```hcl
 locals {
@@ -205,18 +256,18 @@ locals {
 }
 ```
 
-Change this before deployment if needed.
+Change this before deployment if another region is required.
 
-## How To Run
+## Basic Runbook
 
-Login to Azure first:
+Login and select the subscription:
 
 ```bash
 az login
 az account set --subscription <subscription-id>
 ```
 
-Then run:
+Run Terraform:
 
 ```bash
 cd examples/standalone
@@ -226,58 +277,109 @@ terraform plan -out tfplan
 terraform apply tfplan
 ```
 
-There are helper scripts as well:
+Helper scripts are included:
 
 ```bash
 ./plan.sh
 ./apply.sh
 ```
 
-The scripts do not hide Terraform. They just run the normal init, validate, plan, and apply flow.
+The scripts are only wrappers. They do not change the Terraform behavior.
+
+## Before Apply Checklist
+
+Check these before running `terraform apply`:
+
+- Confirm the Azure subscription is correct.
+- Confirm the region in `examples/standalone/main.tf`.
+- Confirm the expensive components are still set to `deploy = false`.
+- Review the list of resources in `terraform plan`.
+- Check whether Azure AI Search, Cosmos DB, Container Registry, and Private Endpoints are really needed.
+- Decide whether this is a short test or a longer-running environment.
+
+Useful command:
+
+```bash
+terraform plan -out tfplan
+terraform show -no-color tfplan
+```
 
 ## Cleanup
 
-Use Terraform destroy first:
+Use Terraform first:
 
 ```bash
 cd examples/standalone
 terraform destroy
 ```
 
-If a test deployment is interrupted and some resources remain, check the resource group in Azure Portal or with Azure CLI.
-
-Example:
+If Terraform is interrupted, check the resource group:
 
 ```bash
 az resource list -g <resource-group-name> -o table
 ```
 
-If the resource group only contains test resources and Terraform cleanup is stuck, delete the resource group:
+If the remaining resources are only test resources and cleanup is stuck, delete the resource group:
 
 ```bash
 az group delete --name <resource-group-name> --yes --no-wait
 ```
 
-## Current Design Choices
+Then check again:
 
-This template is intentionally conservative for cost.
+```bash
+az group show --name <resource-group-name>
+```
 
-It keeps the AI/ML landing zone shape, but does not create every production network component by default.
+If the group is gone, Azure CLI will return a not-found error.
 
-The disabled items can be turned back on later when needed:
+## Cost Review
 
-- enable Azure Firewall when controlled outbound routing is required
-- enable Bastion when private VM access is required
-- enable Application Gateway when public ingress is required
-- enable API Management when API publishing or gateway policy is required
-- enable Jump VM or Build VM only when there is a clear operational need
+Azure Cost Management is not fully real time. Cost data can be delayed.
+
+For cost review:
+
+```bash
+az resource list -g <resource-group-name> -o table
+```
+
+In the Azure Portal:
+
+```text
+Cost Management > Cost analysis
+```
+
+Recommended grouping:
+
+- Group by `Resource group`
+- Group by `Service name`
+- Group by `Resource`
+- Use `Actual cost`
+- Use daily granularity for short tests
+
+For short test deployments, deleting the resources is more important than waiting for the cost screen to update.
+
+## Turning Production Components Back On
+
+The disabled components can be enabled later.
+
+Use these only when the design needs them:
+
+| Component | Enable when |
+| --- | --- |
+| Azure Firewall | You need controlled egress and centralized inspection |
+| Azure Bastion | You need browser-based access to private VMs |
+| Application Gateway / WAF | You need public HTTP/S ingress and WAF policies |
+| API Management | You need API gateway, policy, subscription, or developer portal features |
+| Jump VM | You need an operations VM inside the VNet |
+| Build VM | You need a self-hosted build agent inside the landing zone |
 
 ## Notes
 
-This repo is mainly for practical Terraform deployment work. It is not meant to replace the original Microsoft Bicep project.
+This repository is meant for practical Terraform deployment work. It is not a replacement for the Microsoft Bicep repository.
 
-If you need the original Bicep implementation, use:
+Use the original Bicep project when you need the official Bicep pattern:
 
 https://github.com/Azure/bicep-ptn-aiml-landing-zone
 
-If you use this Terraform version, always check the generated plan and Azure Cost Management after testing.
+Use this repository when you need a Terraform version that keeps the same landing zone idea and starts with the expensive optional components disabled.
